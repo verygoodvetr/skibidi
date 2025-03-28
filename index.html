@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        a:hover {
+            color: #2980b9;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            background-color: #f8f9fa;
+            color: #7f8c8d;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .pc-folder {
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pc-header {
+            padding: 15px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+        .pc-header:hover {
+            background-color: #f1f3f5;
+        }
+        .pc-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .file-count {
+            background-color: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+        .chevron {
+            transition: transform 0.2s ease;
+            margin-left: 10px;
+        }
+        details[open] .chevron {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 logs</h1>
+        <div id="file-list" class="status loading">Loading files...</div>
+        
+        <script>
+            const repo = "verygoodvetr/host"; // Change to your repo
+            const branch = "main";
+            const folder = "data";
+
+            function formatDateTime(filename) {
+                const [dateStr, timeStr, ...nameParts] = filename.split('_');
+                const name = nameParts.join('_').replace('.txt', '');
+                
+                // Format date (YYYYMMDD -> YYYY-MM-DD)
+                const year = dateStr.slice(0, 4);
+                const month = dateStr.slice(4, 6);
+                const day = dateStr.slice(6, 8);
+                
+                // Format time (HHmmss -> HH:mm:ss)
+                const hours = timeStr.slice(0, 2);
+                const minutes = timeStr.slice(2, 4);
+                const seconds = timeStr.slice(4, 6);
+                
+                return {
+                    date: `${year}-${month}-${day}`,
+                    time: `${hours}:${minutes}:${seconds}`,
+                    name: name
+                };
+            }
+
+            async function fetchFiles() {
+                try {
+                    const url = `https://api.github.com/repos/${repo}/contents/${folder}?ref=${branch}`;
+                    const response = await fetch(url);
+                    const files = await response.json();
+                    
+                    // Group files by PC name and sort by date/time
+                    const groupedFiles = files.reduce((groups, file) => {
+                        const { name, date, time } = formatDateTime(file.name);
+                        const timestamp = new Date(`${date}T${time}`).getTime();
+                        
+                        if (!groups[name]) {
+                            groups[name] = [];
+                        }
+                        
+                        groups[name].push({
+                            name: file.name,
+                            date,
+                            time,
+                            timestamp,
+                            url: `https://raw.githubusercontent.com/${repo}/${branch}/${folder}/${file.name}`
+                        });
+                        
+                        return groups;
+                    }, {});
+                    
+                    // Sort PC groups and their files
+                    const sortedGroups = Object.entries(groupedFiles)
+                        .sort(([a], [b]) => a.localeCompare(b)) // Sort PC names alphabetically
+                        .map(([pcName, files]) => ({
+                            pcName,
+                            files: files.sort((a, b) => b.timestamp - a.timestamp) // Newest first
+                        }));
+                    
+                    const fileList = document.getElementById("file-list");
+                    fileList.innerHTML = `
+                        ${sortedGroups.map(({ pcName, files }) => `
+                            <details class="pc-folder" open>
+                                <summary class="pc-header">
+                                    <span class="pc-name">${pcName}</span>
+                                    <div>
+                                        <span class="file-count">${files.length} ${files.length === 1 ? 'file' : 'files'}</span>
+                                        <svg class="chevron" width="12" height="8" viewBox="0 0 12 8">
+                                            <path fill="currentColor" d="M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z"/>
+                                        </svg>
+                                    </div>
+                                </summary>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>File</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${files.map(file => `
+                                            <tr>
+                                                <td>${file.date}</td>
+                                                <td>${file.time}</td>
+                                                <td>
+                                                    <a href="${file.url}" target="_blank">
+                                                        View
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </details>
+                        `).join('')}
+                    `;
+                } catch (err) {
+                    fileList.innerHTML = `
+                        <div class="status error">
+                            Failed to load files. Please try again later.
+                        </div>
+                    `;
+                    console.error(err);
+                }
+            }
+
+            fetchFiles();
+        </script>
+    </div>
+</body>
+</html>
