@@ -99,6 +99,36 @@
         details[open] .chevron {
             transform: rotate(180deg);
         }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: 15px;
+        }
+        .button {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .button:hover {
+            transform: translateY(-1px);
+        }
+        .block-button {
+            background-color: #3498db;
+            color: white;
+        }
+        .block-button:hover {
+            background-color: #2980b9;
+        }
+        .delete-button {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .delete-button:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -172,7 +202,11 @@
                             <details class="pc-folder" open>
                                 <summary class="pc-header">
                                     <span class="pc-name">${pcName}</span>
-                                    <div>
+                                    <div style="display: flex; align-items: center;">
+                                        <div class="action-buttons">
+                                            <button class="button block-button" onclick="blockPC('${pcName}')">Block</button>
+                                            <button class="button delete-button" onclick="deletePC('${pcName}')">Delete</button>
+                                        </div>
                                         <span class="file-count">${files.length} ${files.length === 1 ? 'file' : 'files'}</span>
                                         <svg class="chevron" width="12" height="8" viewBox="0 0 12 8">
                                             <path fill="currentColor" d="M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z"/>
@@ -211,6 +245,51 @@
                         </div>
                     `;
                     console.error(err);
+                }
+            }
+
+            async function blockPC(pcName) {
+                try {
+                    const response = await fetch('block.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ pc: pcName })
+                    });
+                    
+                    if (response.ok) {
+                        alert('PC blocked successfully!');
+                    } else {
+                        alert('Error blocking PC');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to block PC');
+                }
+            }
+
+            async function deletePC(pcName) {
+                if (!confirm(`Are you sure you want to delete all files for ${pcName}?`)) return;
+                
+                try {
+                    const response = await fetch('delete.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ pc: pcName })
+                    });
+                    
+                    if (response.ok) {
+                        alert('Files deleted successfully!');
+                        fetchFiles(); // Refresh the list
+                    } else {
+                        alert('Error deleting files');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to delete files');
                 }
             }
 
