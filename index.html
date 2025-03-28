@@ -250,12 +250,8 @@
 
             async function blockPC(pcName) {
                 try {
-                    const response = await fetch('block.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ pc: pcName })
+                    const response = await fetch('block.php?pc=' + encodeURIComponent(pcName), {
+                        method: 'GET'  // Changed from POST to GET
                     });
                     
                     if (response.ok) {
@@ -268,17 +264,13 @@
                     alert('Failed to block PC');
                 }
             }
-
+            
             async function deletePC(pcName) {
                 if (!confirm(`Are you sure you want to delete all files for ${pcName}?`)) return;
                 
                 try {
-                    const response = await fetch('delete.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ pc: pcName })
+                    const response = await fetch('delete.php?pc=' + encodeURIComponent(pcName), {
+                        method: 'GET'  // Changed from POST to GET
                     });
                     
                     if (response.ok) {
