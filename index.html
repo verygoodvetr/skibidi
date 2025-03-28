@@ -248,42 +248,75 @@
                 }
             }
 
+            const GH_TOKEN = "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";
+            const BLOCKED_FILE = "blocked.txt";
+            const DATA_FOLDER = "data";
+
             async function blockPC(pcName) {
-                try {
-                    const response = await fetch('block.php?pc=' + encodeURIComponent(pcName), {
-                        method: 'GET'  // Changed from POST to GET
-                    });
-                    
-                    if (response.ok) {
-                        alert('PC blocked successfully!');
-                    } else {
-                        alert('Error blocking PC');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to block PC');
-                }
+              try {
+                // Get existing blocked.txt content
+                const existingContent = await fetch(
+                  `https://api.github.com/repos/${repo}/contents/${BLOCKED_FILE}`,
+                  {
+                    headers: { Authorization: `token ${GH_TOKEN}` }
+                  }
+                ).then(res => res.json());
+            
+                // Update file
+                const newContent = existingContent.content 
+                  ? atob(existingContent.content) + `\n${pcName}`
+                  : pcName;
+            
+                await fetch(
+                  `https://api.github.com/repos/${repo}/contents/${BLOCKED_FILE}`,
+                  {
+                    method: "PUT",
+                    headers: { Authorization: `token ${GH_TOKEN}` },
+                    body: JSON.stringify({
+                      message: `Block ${pcName}`,
+                      content: btoa(newContent),
+                      sha: existingContent.sha
+                    })
+                  }
+                );
+            
+                alert("PC blocked successfully!");
+              } catch (error) {
+                console.error("Block error:", error);
+                alert("Failed to block PC");
+              }
             }
             
             async function deletePC(pcName) {
-                if (!confirm(`Are you sure you want to delete all files for ${pcName}?`)) return;
-                
-                try {
-                    const response = await fetch('delete.php?pc=' + encodeURIComponent(pcName), {
-                        method: 'GET'  // Changed from POST to GET
-                    });
-                    
-                    if (response.ok) {
-                        alert('Files deleted successfully!');
-                        fetchFiles(); // Refresh the list
-                    } else {
-                        alert('Error deleting files');
+              if (!confirm(`Delete ALL files for ${pcName}?`)) return;
+            
+              try {
+                // Get all files for this PC
+                const files = await fetch(
+                  `https://api.github.com/repos/${repo}/contents/${DATA_FOLDER}?ref=${branch}`
+                ).then(res => res.json());
+            
+                // Delete each file
+                for (const file of files.filter(f => f.name.startsWith(`${pcName}_`))) {
+                  await fetch(
+                    `https://api.github.com/repos/${repo}/contents/${DATA_FOLDER}/${file.name}`,
+                    {
+                      method: "DELETE",
+                      headers: { Authorization: `token ${GH_TOKEN}` },
+                      body: JSON.stringify({
+                        message: `Delete ${pcName} files`,
+                        sha: file.sha
+                      })
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to delete files');
+                  );
                 }
-            }
+            
+                alert("Files deleted successfully!");
+                fetchFiles();
+              } catch (error) {
+                console.error("Delete error:", error);
+                alert("Failed to delete files");
+              }
 
             fetchFiles();
         </script>
